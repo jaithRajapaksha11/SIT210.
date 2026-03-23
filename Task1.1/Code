@@ -1,0 +1,43 @@
+const int switchPin = 2;   // Slider switch
+const int porchPin  = 3;   // Porch LED
+const int hallPin   = 4;   // Hallway LED
+
+bool hasRun = false;      
+int lastSwitchState = HIGH;
+
+void setup() {
+  pinMode(switchPin, INPUT_PULLUP);  
+  pinMode(porchPin, OUTPUT);
+  pinMode(hallPin, OUTPUT);
+
+  digitalWrite(porchPin, LOW);
+  digitalWrite(hallPin, LOW);
+}
+
+void loop() {
+  int switchState = digitalRead(switchPin);
+
+  // Detect OFF -> ON change
+  bool turnedOnNow = (lastSwitchState == HIGH && switchState == LOW);
+
+  if (turnedOnNow && hasRun == false) {
+    digitalWrite(porchPin, HIGH);
+    digitalWrite(hallPin, HIGH);
+
+    delay(30000);               // porch on 30 s
+    digitalWrite(porchPin, LOW);
+
+    delay(30000);               // hallway on 30 s more (total 6 s)
+    digitalWrite(hallPin, LOW);
+
+    hasRun = true;              
+  }
+  
+  // when slider goes back to OFF (HIGH), reset hasRun
+  if (switchState == HIGH) {
+    hasRun = false;
+  }
+
+  lastSwitchState = switchState;
+
+}
