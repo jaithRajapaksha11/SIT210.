@@ -1,0 +1,58 @@
+#include <Wire.h>
+#include <BH1750.h>
+#include <WiFiNINA.h>
+#include <ThingSpeak.h>
+
+// WiFi credentials
+const char* ssid = "OPTUS_0FEE18N";
+const char* password = "lunar54624tn";
+
+// ThingSpeak
+unsigned long channelID = 3309063;
+const char* writeAPIKey = "1SNF2YOQSG244V71";
+
+WiFiClient client;
+BH1750 lightMeter;
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+
+  // Start sensor
+  if (lightMeter.begin()) {
+    Serial.println("BH1750 ready");
+  } else {
+    Serial.println("Error initializing BH1750");
+  }
+
+  // Connect WiFi
+  while (WiFi.begin(ssid, password) != WL_CONNECTED) {
+    Serial.print(".");
+    delay(5000);
+  }
+  Serial.println("\nWiFi Connected");
+
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  // Read light level
+  float lux = lightMeter.readLightLevel();
+
+  Serial.print("Light: ");
+  Serial.print(lux);
+  Serial.println(" lx");
+
+  // Send to ThingSpeak
+  ThingSpeak.setField(1, lux);
+
+  int status = ThingSpeak.writeFields(channelID, writeAPIKey);
+
+  if (status == 200) {
+    Serial.println("Data sent successfully");
+  } else {
+    Serial.println("Error sending data");
+  }
+
+  delay(30000); // 30 seconds
+}
