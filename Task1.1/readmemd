@@ -1,0 +1,11 @@
+This code turns two LEDs on for fixed times when you flip a slider switch from OFF to ON.
+
+In setup(), it sets the slider switch pin as an input with an internal pull‑up resistor, sets the two LED pins as outputs, and makes sure both LEDs start off.
+
+In loop(), it reads the current switch state and compares it with the last state to detect when the switch has just changed from OFF (HIGH) to ON (LOW).
+
+When that OFF→ON change happens and the sequence has not already run, it turns both LEDs on, keeps them on for 30 seconds, then turns off the porch LED, waits another 30 seconds, and finally turns off the hallway LED.
+
+A hasRun flag remembers that the sequence has already run while the switch is in the ON position, so it does not repeat until you move the switch back to OFF.
+
+When the switch is OFF again, the code resets hasRun so the next ON action can trigger the sequence one more time.
