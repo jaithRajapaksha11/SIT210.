@@ -3,7 +3,7 @@ const int porchPin  = 3;   // Porch LED
 const int hallPin   = 4;   // Hallway LED
 
 bool hasRun = false;      
-int lastSwitchState = HIGH;
+int lastSwitchState = LOW;
 
 void setup() {
   pinMode(switchPin, INPUT_PULLUP);  
