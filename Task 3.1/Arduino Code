@@ -1,0 +1,43 @@
+#include <Wire.h>
+#include <BH1750.h>
+#include <WiFiNINA.h>
+#include <PubSubClient.h>
+
+const char* ssid = "OPTUS_0FEE18N";
+const char* password = "lunar54624tn";
+const char* mqtt_server = "broker.hivemq.com";
+
+WiFiClient wifiClient;
+PubSubClient client(wifiClient);
+BH1750 lightMeter;
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+  lightMeter.begin();
+
+  while (WiFi.begin(ssid, password) != WL_CONNECTED) {
+    delay(5000);
+  }
+
+  client.setServer(mqtt_server, 1883);
+}
+
+void reconnect() {
+  while (!client.connected()) {
+    client.connect("ArduinoClient");
+  }
+}
+
+void loop() {
+  if (!client.connected()) reconnect();
+
+  float lux = lightMeter.readLightLevel();
+
+  char msg[10];
+  sprintf(msg, "%.2f", lux);
+
+  client.publish("sensor/light", msg);
+
+  delay(5000);
+}
