@@ -1,0 +1,21 @@
+var lux = parseFloat(msg.payload);
+
+if (context.get("state") == null) {
+    context.set("state", "off");
+}
+
+if (lux > 200 && context.get("state") != "on") {
+    context.set("state", "on");
+    msg.payload = "Sunlight detected";
+    msg.topic = "Light Alert";   
+    return msg;
+}
+
+if (lux < 200 && context.get("state") != "off") {
+    context.set("state", "off");
+    msg.payload = "No sunlight";
+    msg.topic = "Light Alert";  
+    return msg;
+}
+
+return null;
