@@ -1,0 +1,115 @@
+#include <Wire.h>
+#include <BH1750.h>
+
+const int switchPin = 2;   
+const int pirPin    = 3;   
+const int led1Pin   = 5;   
+const int led2Pin   = 6;   
+
+
+BH1750 lightMeter;
+const float darkThreshold = 200.0;
+
+
+volatile bool switchTriggered = false;
+volatile bool motionTriggered = false;
+
+
+bool lightsOn = false;
+
+
+void switchISR() {
+  switchTriggered = true;
+}
+
+void pirISR() {
+  motionTriggered = true;
+}
+
+
+void turnLightsOn() {
+  digitalWrite(led1Pin, HIGH);
+  digitalWrite(led2Pin, HIGH);
+  lightsOn = true;
+}
+
+void turnLightsOff() {
+  digitalWrite(led1Pin, LOW);
+  digitalWrite(led2Pin, LOW);
+  lightsOn = false;
+}
+
+void setup() {
+  Serial.begin(9600);
+  while (!Serial);
+
+  pinMode(led1Pin, OUTPUT);
+  pinMode(led2Pin, OUTPUT);
+  turnLightsOff();
+
+  pinMode(switchPin, INPUT_PULLUP);
+  pinMode(pirPin, INPUT);
+
+  Wire.begin();
+  if (lightMeter.begin()) {
+    Serial.println("BH1750 started successfully.");
+  } else {
+    Serial.println("Error: BH1750 not detected.");
+  }
+
+  attachInterrupt(digitalPinToInterrupt(switchPin), switchISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(pirPin), pirISR, RISING);
+
+  Serial.println("System ready.");
+}
+
+void loop() {
+  float lux = lightMeter.readLightLevel();
+
+
+  // Auto turn OFF if bright
+  if (lightsOn && lux > darkThreshold) {
+    turnLightsOff();
+    Serial.println("Lux is above 200. Lights turned OFF automatically.");
+  }
+
+  // Handle switch interrupt
+  if (switchTriggered) {
+    noInterrupts();
+    switchTriggered = false;
+    interrupts();
+
+    Serial.println("Slider switch interrupt detected.");
+
+    if (lux < darkThreshold) {
+      turnLightsOn();
+      Serial.println("It is dark. Lights turned ON by slider switch.");
+    } else {
+      turnLightsOff();
+      Serial.println("It is bright. Lights stay OFF.");
+    }
+
+    delay(200); 
+  }
+
+  // Handle PIR interrupt
+  if (motionTriggered) {
+    noInterrupts();
+    motionTriggered = false;
+    interrupts();
+
+    Serial.println("Motion detected by PIR sensor.");
+
+    if (lux < darkThreshold) {
+      turnLightsOn();
+      Serial.println("It is dark. Lights turned ON automatically.");
+    } else {
+      turnLightsOff();
+      Serial.println("It is bright. Lights stay OFF.");
+    }
+
+    delay(200);
+  }
+
+  delay(500);
+}
