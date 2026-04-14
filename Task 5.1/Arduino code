@@ -1,0 +1,48 @@
+const int livingLED = 2;
+const int bathLED = 3;
+const int closetLED = 4;
+
+String incoming = "";
+
+void setup() {
+  pinMode(livingLED, OUTPUT);
+  pinMode(bathLED, OUTPUT);
+  pinMode(closetLED, OUTPUT);
+
+  digitalWrite(livingLED, LOW);
+  digitalWrite(bathLED, LOW);
+  digitalWrite(closetLED, LOW);
+
+  Serial.begin(9600);
+  while (!Serial) {
+    ; 
+  }
+}
+
+void loop() {
+  if (Serial.available()) {
+    incoming = Serial.readStringUntil('\n');
+    incoming.trim();
+
+    if (incoming == "LIVING") {
+      digitalWrite(livingLED, HIGH);
+      digitalWrite(bathLED, LOW);
+      digitalWrite(closetLED, LOW);
+    }
+    else if (incoming == "BATHROOM") {
+      digitalWrite(livingLED, LOW);
+      digitalWrite(bathLED, HIGH);
+      digitalWrite(closetLED, LOW);
+    }
+    else if (incoming == "CLOSET") {
+      digitalWrite(livingLED, LOW);
+      digitalWrite(bathLED, LOW);
+      digitalWrite(closetLED, HIGH);
+    }
+    else if (incoming == "OFF") {
+      digitalWrite(livingLED, LOW);
+      digitalWrite(bathLED, LOW);
+      digitalWrite(closetLED, LOW);
+    }
+  }
+}
