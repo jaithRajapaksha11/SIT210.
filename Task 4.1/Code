@@ -6,17 +6,14 @@ const int pirPin    = 3;
 const int led1Pin   = 5;   
 const int led2Pin   = 6;   
 
-
 BH1750 lightMeter;
 const float darkThreshold = 200.0;
-
 
 volatile bool switchTriggered = false;
 volatile bool motionTriggered = false;
 
-
 bool lightsOn = false;
-
+bool manualOverride = false;
 
 void switchISR() {
   switchTriggered = true;
@@ -25,7 +22,6 @@ void switchISR() {
 void pirISR() {
   motionTriggered = true;
 }
-
 
 void turnLightsOn() {
   digitalWrite(led1Pin, HIGH);
@@ -66,9 +62,8 @@ void setup() {
 void loop() {
   float lux = lightMeter.readLightLevel();
 
-
-  // Auto turn OFF if bright
-  if (lightsOn && lux > darkThreshold) {
+  // Auto turn OFF if bright, but only when manual override is NOT active
+  if (lightsOn && lux > darkThreshold && !manualOverride) {
     turnLightsOff();
     Serial.println("Lux is above 200. Lights turned OFF automatically.");
   }
@@ -81,12 +76,13 @@ void loop() {
 
     Serial.println("Slider switch interrupt detected.");
 
-    if (lux < darkThreshold) {
-      turnLightsOn();
-      Serial.println("It is dark. Lights turned ON by slider switch.");
+    turnLightsOn();
+    manualOverride = true;
+
+    if (lux > darkThreshold) {
+      Serial.println("Override: Lights turned ON even though environment is bright.");
     } else {
-      turnLightsOff();
-      Serial.println("It is bright. Lights stay OFF.");
+      Serial.println("It is dark. Lights turned ON by slider switch.");
     }
 
     delay(200); 
@@ -99,6 +95,8 @@ void loop() {
     interrupts();
 
     Serial.println("Motion detected by PIR sensor.");
+
+    manualOverride = false;
 
     if (lux < darkThreshold) {
       turnLightsOn();
