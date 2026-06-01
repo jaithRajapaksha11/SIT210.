@@ -1,0 +1,120 @@
+#include <DHT.h>
+
+#define DHTPIN 2
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+
+const int fanLED = 8;
+const int warningLED = 9;
+const int buzzerPin = 3;
+const int buttonPin = 7;
+
+bool systemOn = true;
+
+unsigned long highTempStartTime = 0;
+bool highTempTimerStarted = false;
+
+const float SAFE_TEMP = 15.0;
+const float HIGH_TEMP = 30.0;
+const unsigned long CRITICAL_TIME = 5000; 
+
+void setup() {
+  pinMode(fanLED, OUTPUT);
+  pinMode(warningLED, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  allOff();
+
+  Serial.begin(9600);
+  dht.begin();
+
+  delay(5000);
+
+  Serial.println("SYSTEM_START");
+}
+
+void loop() {
+  handleButton();
+
+  float temperature = dht.readTemperature();
+
+  if (isnan(temperature)) {
+    sensorError();
+    delay(1000);
+    return;
+  }
+
+  if (!systemOn) {
+    allOff();
+    sendData(temperature, "");
+    delay(3000);
+    return;
+  }
+
+  if (temperature < SAFE_TEMP) {
+    allOff();
+    highTempTimerStarted = false;
+    sendData(temperature, "NORMAL");
+  }
+  else if (temperature >= SAFE_TEMP && temperature <= HIGH_TEMP) {
+    digitalWrite(fanLED, HIGH);
+    digitalWrite(warningLED, LOW);
+    digitalWrite(buzzerPin, LOW);
+    highTempTimerStarted = false;
+    sendData(temperature, "COOLING_FAN_ON");
+  }
+  else {
+    digitalWrite(warningLED, HIGH);
+
+    if (!highTempTimerStarted) {
+      highTempStartTime = millis();
+      highTempTimerStarted = true;
+    }
+
+    if (millis() - highTempStartTime >= CRITICAL_TIME) {
+      digitalWrite(buzzerPin, HIGH);
+      sendData(temperature, "CRITICAL_TEMP_TOO_LONG");
+    } else {
+      digitalWrite(buzzerPin, LOW);
+      sendData(temperature, "HIGH_TEMP_WARNING");
+    }
+  }
+
+  delay(3000);
+}
+
+void handleButton() {
+  if (digitalRead(buttonPin) == LOW) {
+    systemOn = true;
+  } else {
+    systemOn = false;
+    allOff();
+  }
+}
+
+void sensorError() {
+  allOff();
+  digitalWrite(warningLED, HIGH);
+  delay(200);
+  digitalWrite(warningLED, LOW);
+  delay(200);
+
+  Serial.println("TEMP:ERROR,STATUS:SENSOR_FAILURE");
+}
+
+void sendData(float temperature, String status) {
+  Serial.print("TEMP:");
+  Serial.print(temperature);
+  Serial.print(",STATUS:");
+  Serial.print(status);
+  Serial.print(",SYSTEM:");
+  Serial.println(systemOn ? "ON" : "OFF");
+}
+
+void allOff() {
+  digitalWrite(fanLED, LOW);
+  digitalWrite(warningLED, LOW);
+  digitalWrite(buzzerPin, LOW);
+}
