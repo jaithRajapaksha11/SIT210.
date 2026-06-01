@@ -1,0 +1,128 @@
+import serial
+import csv
+import time
+from datetime import datetime
+
+SERIAL_PORT = "COM13"  
+
+BAUD_RATE = 9600
+LOG_FILE = "temperature_log.csv"
+COMMUNICATION_TIMEOUT = 5
+
+def create_log_file():
+    try:
+        with open(LOG_FILE, "x", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Timestamp", "Temperature", "Status", "System"])
+    except FileExistsError:
+        pass
+
+def log_event(temperature, status, system):
+    with open(LOG_FILE, "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([datetime.now(), temperature, status, system])
+
+def parse_data(line):
+
+
+    data = {
+        "temperature": "UNKNOWN",
+        "status": "UNKNOWN",
+        "system": "UNKNOWN"
+    }
+
+    parts = line.split(",")
+
+    for part in parts:
+        if part.startswith("TEMP:"):
+            data["temperature"] = part.replace("TEMP:", "")
+        elif part.startswith("STATUS:"):
+            data["status"] = part.replace("STATUS:", "")
+        elif part.startswith("SYSTEM:"):
+            data["system"] = part.replace("SYSTEM:", "")
+
+    return data
+
+def display_dashboard(temperature, status, system):
+    print("\n==============================")
+    print(" CAREGIVER TEMPERATURE DASHBOARD")
+    print("==============================")
+    print(f"Temperature: {temperature}")
+    print(f"Status: {status}")
+    print(f"System: {system}")
+
+    if status == "NORMAL":
+        print("Message: Room condition is safe.")
+
+    elif status == "WARM_FAN_ON":
+        print("Message: Room is warm. Cooling response activated.")
+
+    elif status == "HIGH_TEMP_WARNING":
+        print("ALERT: High temperature detected. Local warning active.")
+
+    elif status == "CRITICAL_TEMP_TOO_LONG":
+        print("CRITICAL ALERT: Temperature has stayed too high for too long.")
+        print("Caregiver action recommended.")
+
+    elif status == "SENSOR_FAILURE":
+        print("FAULT: Temperature sensor failure detected.")
+        print("Check DHT11 connection and wiring.")
+
+    elif status == "SYSTEM_OFF":
+        print("Message: System is manually turned off.")
+
+def main():
+    create_log_file()
+
+    print("Starting caregiver dashboard...")
+    print("Connecting to Arduino...")
+
+    try:
+        arduino = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+        time.sleep(2)
+        print("Connected successfully.")
+    except Exception as e:
+        print("Could not connect to Arduino.")
+        print("Check the port name and USB connection.")
+        print(e)
+        return
+
+    last_received_time = time.time()
+
+    while True:
+        try:
+            if arduino.in_waiting > 0:
+                line = arduino.readline().decode("utf-8", errors="ignore").strip()
+
+                if line:
+                    last_received_time = time.time()
+
+                    if line == "SYSTEM_START":
+                        print("Arduino system started.")
+                        continue
+
+                    data = parse_data(line)
+
+                    temperature = data["temperature"]
+                    status = data["status"]
+                    system = data["system"]
+
+                    display_dashboard(temperature, status, system)
+                    log_event(temperature, status, system)
+
+            if time.time() - last_received_time > COMMUNICATION_TIMEOUT:
+                print("\nCOMMUNICATION WARNING: No data received from Arduino.")
+                print("Dashboard detected possible connection loss.")
+                log_event("UNKNOWN", "COMMUNICATION_LOSS", "UNKNOWN")
+                last_received_time = time.time()
+
+        except KeyboardInterrupt:
+            print("\nDashboard stopped by user.")
+            break
+
+        except Exception as e:
+            print("Dashboard error:")
+            print(e)
+
+if __name__ == "__main__":
+    main()
